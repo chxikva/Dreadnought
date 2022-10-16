@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block content %}
+    {% for data in data %}
+        <article class="media content-section">
+          <div class="media-body">
+            <div class="article-metadata">
+              <a class="mr-2" href="#">{{ data.name.title() }}</a>
+              <small class="text-muted">{{ data.date }}</small>
+            </div>
+            <h2><a class="article-title" href="#">Weight: {{ data.weight }} KG</a></h2>
+            <p class="article-content">Estimated TDEE: {{ data.tdee }} Kcal</p>
+          </div>
+        </article>
+    {% endfor %}
+{% endblock content %}
