@@ -1,4 +1,5 @@
-from server import *
+from application.models import *
+from application import app, db
 
 user_1_data = UserData(user='runsonlentils', user_id='1', sex='Male')
 user_1 = User(username='nikatest', email='nika@gmail.com', password='test123@')
