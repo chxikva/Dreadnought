@@ -1,36 +1,39 @@
 import os
 import secrets
+from datetime import *
+from math import floor
 from PIL import Image
-from flask import render_template, url_for, flash, redirect, request
-from application import app, db, bcrypt
-from application.forms import RegistrationForm, LoginForm, UpdateAccountForm
-from application.models import User, UserData
+from flask import render_template, url_for, flash, redirect, request, abort
+from application import app, db, bcrypt, mail
+from application.forms import RegistrationForm, LoginForm, UpdateAccountForm, \
+    CalorieCalculatorForm, PostForm, RequestResetForm, ResetPasswordForm
+from application.models import User, Post
 from flask_login import login_user, current_user, logout_user, login_required
-
-
-data = [
-    {'date': '16 October, 2022',
-     'name': 'nika',
-     'sex': 'Male',
-     'height': '180',
-     'weight': '85',
-     'age': '25',
-     'tdee': '3250'
-     },
-    {'date': '16 October, 2022',
-     'name': 'susan',
-     'sex': 'Female',
-     'height': '170',
-     'weight': '60',
-     'age': '25',
-     'tdee': '2000'
-    }
-]
+from flask_mail import Message
 
 
 @app.route("/")
+@app.route("/home")
 def home():
-    return render_template('home.html', data=data, title="User Stats")
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=5)
+    return render_template('home.html', title="Home", posts=posts)
+
+
+@app.route("/calculator", methods=['GET', 'POST'])
+def calorie_calculator():
+    form = CalorieCalculatorForm()
+    if form.validate_on_submit():
+        if form.gender.data == '1':
+            tdee = (88.362 + (13.397 * form.weight.data) + (4.799 * form.height.data)
+                    - (5.677 * form.age.data)) * float(form.activity.data)
+            tdee_final = floor(tdee)
+        else:
+            tdee = (447.593 + (9.247 * form.weight.data) + (3.098 * form.height.data)
+                    - (4.330 * form.age.data)) * float(form.activity.data)
+            tdee_final = floor(tdee)
+        flash(f"Calculated! Your TDEE is {tdee_final}", 'success')
+    return render_template('calorie_calculator.html', title="Calorie Calculator", form=form)
 
 
 @app.route("/register", methods=['GET', 'POST'])
@@ -78,6 +81,7 @@ def save_picture(form_picture):
     picture_path = os.path.join(app.root_path, 'static/profile_pictures/', picture_fn)
     # image is saved as a 0 byte image, find issue and fix it + resize it with Pillow
     """for picture_name in os.listdir('C:/Users/Nikoloz.Oboladze/Desktop/Dreadnought/application/static/profile_pictures'):
+        # if hex already exists, create a new one
         while picture_fn == picture_name:
             new_random_hex = secrets.token_hex(8)
             _, new_f_ext = os.path.splitext(form_picture.filename)
@@ -99,9 +103,11 @@ def save_picture(form_picture):
 
     return picture_fn
 
+
 @app.route("/account", methods=['GET', 'POST'])
 @login_required
 def account():
+    tdee = 0
     form = UpdateAccountForm()
     if form.validate_on_submit():
         with app.app_context():
@@ -110,11 +116,142 @@ def account():
                 current_user.image_file = picture_file
             current_user.username = form.username.data
             current_user.email = form.email.data
+            current_user.gender = form.gender.data
+            current_user.age = form.age.data
+            current_user.height = form.height.data
+            current_user.weight = form.weight.data
+            current_user.activity = form.activity.data
+            user = User.query.filter_by(email=current_user.email).first()
+            user.date_updated = datetime.now()
             db.session.commit()
         flash('Your account has been updated.', 'success')
         return redirect(url_for('account'))
     elif request.method == 'GET':
         form.username.data = current_user.username
         form.email.data = current_user.email
+        form.gender.data = current_user.gender
+        form.age.data = current_user.age
+        form.height.data = current_user.height
+        form.weight.data = current_user.weight
+        form.activity.data = current_user.activity
+        if form.gender.data == 'Male':
+            const_kcal = 88.362
+            weight_kcal = 13.397 * float(form.weight.data)
+            height_kcal = 4.799 * int(form.height.data)
+            age_kcal = 5.677 * int(form.age.data)
+            activity_kcal = float(form.activity.data)
+            tdee = floor((const_kcal + weight_kcal + height_kcal - age_kcal) * activity_kcal)
+        elif form.gender.data == 'Female':
+            const_kcal = 447.593
+            weight_kcal = 9.247 * float(form.weight.data)
+            height_kcal = 3.098 * int(form.height.data)
+            age_kcal = 4.330 * int(form.age.data)
+            activity_kcal = float(form.activity.data)
+            tdee = floor((const_kcal + weight_kcal + height_kcal - age_kcal) * activity_kcal)
     image_file = url_for('static', filename=f"profile_pictures/{current_user.image_file}")
-    return render_template('account.html', title='Account', image_file=image_file, form=form)
+    return render_template('account.html', title='Account', image_file=image_file, form=form, tdee=tdee)
+
+
+@app.route("/post/new", methods=['GET', 'POST'])
+@login_required
+def new_post():
+    form = PostForm()
+    if form.validate_on_submit():
+        with app.app_context():
+            post = Post(title=form.title.data, content=form.content.data, author=current_user)
+            db.session.add(post)
+            db.session.commit()
+        flash('Your post has been created!', 'success')
+        return redirect(url_for('home'))
+    return render_template('create_post.html', title='New Post',
+                           form=form, legend='New Post')
+
+
+@app.route("/post/<int:post_id>")
+def post(post_id):
+    post = Post.query.get_or_404(post_id)
+    return render_template('post.html', title=post.title, post=post)
+
+
+@app.route("/post/<int:post_id>/update", methods=['GET', 'POST'])
+@login_required
+def update_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    form = PostForm()
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.content = form.content.data
+        db.session.commit()
+        flash('Your post has been updated!', 'success')
+        return redirect(url_for('post', post_id=post.id))
+    elif request.method == 'GET':
+        form.title.data = post.title
+        form.content.data = post.content
+    return render_template('create_post.html', title='Update Post',
+                           form=form, legend='Update Post')
+
+
+@app.route("/post/<int:post_id>/delete", methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    db.session.delete(post)
+    db.session.commit()
+    flash('Your post has been deleted!', 'success')
+    return redirect(url_for('home'))
+
+
+@app.route("/user/<string:username>")
+def user_posts(username):
+    page = request.args.get('page', 1, type=int)
+    user = User.query.filter_by(username=username).first_or_404()
+    posts = Post.query.filter_by(author=user) \
+        .order_by(Post.date_posted.desc()) \
+        .paginate(page=page, per_page=5)
+    return render_template('user_posts.html', posts=posts, user=user)
+
+
+def send_reset_email(user):
+    token = user.get_reset_token()
+    msg = Message('Password Reset Request', sender='noreply@demo.com', recipients=[user.email])
+    msg.body = f'''To reset your password, visit the following link:
+{url_for('reset_token', token=token, _external=True)}
+
+If you did not make this request then simply ignore this email.
+'''
+    mail.send(msg)
+
+@app.route("/reset_password", methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = RequestResetForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        send_reset_email(user)
+        flash('An email has been sent with instructions to reset your password.', 'info')
+        return redirect(url_for('login'))
+    return render_template('reset_request.html', title='Reset Password', form=form)
+
+
+@app.route("/reset_password/<token>", methods=['GET', 'POST'])
+def reset_token(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('that is an invalid or expired token.', 'warning')
+        return redirect(url_for('reset_request'))
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        with app.app_context():
+            user.password = hashed_password
+            db.session.commit()
+        flash(f"Your password has been updated.", 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_token.html', title='Reset Password', form=form)

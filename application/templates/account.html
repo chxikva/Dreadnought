@@ -50,6 +50,89 @@
             {% endif %}
           </div>
         </fieldset>
+          <a class="btn btn-outline-info" data-toggle="collapse" href="#collapseExample"
+             role="button" aria-expanded="false" aria-controls="collapseExample">
+            Additional Info
+          </a>
+        <fieldset class="form-group">
+          <div class="collapse" id="collapseExample">
+            <div class="card card-body">
+              <div class="form-group">
+                {{ form.gender.label(class="form-control-label") }}
+
+                {% if form.gender.errors %}
+                  {{ form.gender(class="form-control form-control-lg is-invalid") }}
+                  <div class="invalid-feedback">
+                    {% for error in form.gender.errors %}
+                      <span>{{ error }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  {{ form.gender(class="") }}
+                {% endif %}
+              </div>
+              <div class="form-group">
+                {{ form.age.label(class="form-control-label") }}
+
+                {% if form.age.errors %}
+                  {{ form.age(class="form-control form-control-lg is-invalid") }}
+                  <div class="invalid-feedback">
+                    {% for error in form.age.errors %}
+                      <span>{{ error }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  {{ form.age(class="") }}
+                {% endif %}
+              </div>
+              <div class="form-group">
+                {{ form.height.label(class="form-control-label") }}
+
+                {% if form.height.errors %}
+                  {{ form.height(class="form-control form-control-lg is-invalid") }}
+                  <div class="invalid-feedback">
+                    {% for error in form.height.errors %}
+                      <span>{{ error }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  {{ form.height(class="") }}
+                {% endif %}
+              </div>
+              <div class="form-group">
+                {{ form.weight.label(class="form-control-label") }}
+
+                {% if form.weight.errors %}
+                  {{ form.weight(class="form-control form-control-lg is-invalid") }}
+                  <div class="invalid-feedback">
+                    {% for error in form.weight.errors %}
+                      <span>{{ error }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  {{ form.weight(class="") }}
+                {% endif %}
+              </div>
+              <div class="form-group">
+                {{ form.activity.label(class="form-control-label") }}
+
+                {% if form.activity.errors %}
+                  {{ form.activity(class="form-control form-control-lg is-invalid") }}
+                  <div class="invalid-feedback">
+                    {% for error in form.activity.errors %}
+                      <span>{{ error }}</span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  {{ form.activity(class="form-control form-control-lg") }}
+                {% endif %}
+              </div>
+              <div class="form-group">
+                Your TDEE: {{ tdee }}
+              </div>
+            </div>
+          </div>
+        </fieldset>
         <div class="form-group">
           {{ form.submit(class="btn btn-outline-info") }}
         </div>

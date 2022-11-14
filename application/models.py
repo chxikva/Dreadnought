@@ -1,5 +1,6 @@
 from datetime import datetime
-from application import db, login_manager
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from application import db, login_manager, app
 from flask_login import UserMixin
 
 
@@ -12,24 +13,40 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    gender = db.Column(db.String(20), nullable=True)
+    age = db.Column(db.String(20), nullable=True)
+    height = db.Column(db.String(20), nullable=True)
+    weight = db.Column(db.String(20), nullable=True)
+    activity = db.Column(db.String(100), nullable=True)
     image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
     password = db.Column(db.String(60), nullable=False)
+    date_updated = db.Column(db.DateTime, nullable=True, default=datetime.now)
+    posts = db.relationship('Post', backref='author', lazy=True)
+
+    def get_reset_token(self, expires_sec=1800):
+        s = Serializer(app.config['SECRET_KEY'], expires_sec)
+        return s.dumps({'user_id': self.id}).decode('utf-8')
+
+    @staticmethod
+    def verify_reset_token(token):
+        s = Serializer(app.config['SECRET_KEY'])
+        try:
+            user_id = s.loads(token)['user_id']
+        except:
+            return None
+        return User.query.get(user_id)
+
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 
 
-class UserData(db.Model):
+class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.String(20), db.ForeignKey('user.username'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    user_relationship = db.relationship('User', foreign_keys='UserData.user') # look into this
-    user_id_relationship = db.relationship('User', foreign_keys='UserData.user_id') # look into this
-    sex = db.Column(db.String(20), nullable=True)
-    height = db.Column(db.String(3), nullable=True)
-    weight = db.Column(db.Float(5), nullable=True)
-    tdee = db.Column(db.String(5), nullable=True)
-    date_updated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    title = db.Column(db.String(100), nullable=False)
+    date_posted = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    content = db.Column(db.Text, nullable=False)
 
     def __repr__(self):
-        return f"User('{self.user}', '{self.user_id}', '{self.date_updated}')"
+        return f"Post('{self.title}, '{self.date_posted}'"
