@@ -1,20 +1,11 @@
 from flask import Flask, render_template, url_for, flash, redirect
+from flask_sqlalchemy import SQLAlchemy
 from forms import RegistrationForm, LoginForm
 
 app = Flask(__name__)
 
+
 app.config['SECRET_KEY'] = 'cd337b99d301c53f0278a292fa12f5f40084d450'
-"""app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:@192.168.0.125/dreadnought'
-
-db = SQLAlchemy(app())
-
-
-class UserAccounts(db.Model):
-    AccID = db.Column(db.Integer, primary_key=True)
-    Username = db.Column(db.String(20), unique=True, nullable=False)
-    mail = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
-    repassword = db.Column(db.String(60), nullable=False)"""
 
 
 data = [
