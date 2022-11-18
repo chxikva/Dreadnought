@@ -1,7 +1,7 @@
 from application.models import *
 from application import app, db
 
-engine = app.config['SQLALCHEMY_DATABASE_URI']
-
 with app.app_context():
-    db.create_all()
+    user = User.query.filter_by(email="didi10akademia@gmail.com").first()
+
+print(user.email)
